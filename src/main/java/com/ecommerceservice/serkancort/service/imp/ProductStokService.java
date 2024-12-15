@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,20 +30,27 @@ public class ProductStokService implements IProductStokService {
 
     public List<DTOProductStok> getAllProductStoks() {
         List<ProductStok> productStoks = productStokRepository.findAll();
+        productStoks.forEach(this::updateInStockStatus);
         return productStokMapper.productStokToDTOList(productStoks);
     }
 
-    @Override
-    public DTOProductStok getProductStok(Long id) {
-        ProductStok response = productStokRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Product Stok not found with id" + id));
-        DTOProductStok dtoProductStok = productStokMapper.productStokToDTO(response);
-        return dtoProductStok;
-    }
-
     public DTOProductStok getProductStokByProductId(Long productId) {
-        ProductStok productStok = productStokRepository.findByProductId(productId).orElseThrow(()-> new ResourceNotFoundException("Product Stok not found with id" + productId));
-        return productStokMapper.productStokToDTO(productStok);
+        return productStokRepository.findByProductId(productId)
+                .map(this::updateInStockStatus)
+                .map(productStokMapper::productStokToDTO)
+                .orElseThrow(()-> new ResourceNotFoundException("Product stok not found for product id: " + productId));
     }
 
+
+    protected ProductStok updateInStockStatus(ProductStok productStok) {
+        productStok.getProduct().setIsAvailable(calculateInStockStatus(productStok));
+        return productStokRepository.save(productStok);
+    }
+    private Boolean calculateInStockStatus(ProductStok productStok) {
+        return Optional.ofNullable(productStok)
+                .map(ProductStok::getStokAdet)
+                .map(stock -> stock.compareTo(BigDecimal.ZERO) > 0)
+                .orElse(false);
+    }
 
 }

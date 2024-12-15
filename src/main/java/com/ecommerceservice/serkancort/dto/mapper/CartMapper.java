@@ -27,5 +27,5 @@ public interface CartMapper {
     void updateCartFromDTO( DTOCartIU dtoCartIU ,@MappingTarget Cart cart);
 
     @Mapping(source = "customer.id" ,target = "customerId")
-    List<DTOCart> customerToDTOList(List<Cart> carts);
+    List<DTOCart> cartToDTOList(List<Cart> carts);
 }

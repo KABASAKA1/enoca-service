@@ -31,25 +31,6 @@ public class Cart extends BaseEntity {
     @Column(name = "total_price" , nullable = true)
     private BigDecimal totalPrice;
 
-    @PrePersist
-    @PreUpdate
-    public void calculateTotalPrice() {
-        this.totalPrice = BigDecimal.ZERO;
-        if (products != null) {
-            products.forEach(product -> {
-                BigDecimal productPrice = product.getTotalPrice() != null ? product.getTotalPrice() : BigDecimal.ZERO;
-                this.totalPrice = this.totalPrice.add(productPrice);
-            });
-        }
-    }
-    public void orderPlace(){
-        for (ProductInCart product : products) {
-            Integer totalAmount = product.getTotalAmount();
-            BigDecimal stokAdet = product.getProduct().getProductStok().getStokAdet();
-            BigDecimal newStokAdet = stokAdet.subtract(BigDecimal.valueOf(totalAmount));
-            product.getProduct().getProductStok().setStokAdet(newStokAdet);
-        }
-    }
 }
 
 

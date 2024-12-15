@@ -12,12 +12,12 @@ import java.util.Optional;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
     // customerId ile siparişleri bulma
-    List<Order> findByCustomerId(Long customerId);
+    Optional<List<Order>> findByCustomerId(Long customerId);
 
 
     // OrderCode ile sipariş bulma
     Optional<Order> findByOrderCode(String orderCode);
 
     @Query("select o ,c from Order o join o.customer c where c.name = :customerName ")
-    List<Order> findOrderByCustomerName(@Param("customerName") String customerName);
+    Optional<List<Order>> findOrderByCustomerName(@Param("customerName") String customerName);
 }

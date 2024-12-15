@@ -26,17 +26,11 @@ public class Product extends BaseEntity {
     @JoinColumn(name = "price_id")
     private Price price;
 
-    @OneToOne(cascade = CascadeType.ALL , fetch = FetchType.EAGER)
+    @OneToOne(cascade = CascadeType.ALL , fetch = FetchType.EAGER , orphanRemoval = true)
     @JoinColumn(name = "stok_id")
     private ProductStok productStok;
 
     private Boolean isAvailable;
-
-    @PreUpdate
-    @PrePersist
-    public void updateInStockStatus() {
-        this.isAvailable = productStok != null &productStok.getStokAdet() != null & productStok.getStokAdet().compareTo(BigDecimal.ZERO) > 0;
-    }
 
 }
 

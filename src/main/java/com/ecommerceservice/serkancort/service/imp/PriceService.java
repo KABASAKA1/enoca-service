@@ -10,6 +10,8 @@ import com.ecommerceservice.serkancort.service.IPriceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class PriceService implements IPriceService {
@@ -18,18 +20,19 @@ public class PriceService implements IPriceService {
 
     @Override
     public DTOPrice createPrice(DTOPriceIU request) {
-        request.setId(null);
-        Price price = priceMapper.priceToENTITY(request);
-        Price response = priceRepository.save(price);
-        DTOPrice dtoPrice = priceMapper.priceToDTO(response);
-        return dtoPrice;
+        return Optional.ofNullable(request)
+                        .map(p->{
+                            Price price =priceMapper.priceToENTITY(p);
+                            price.setId(null);
+                            return priceMapper.priceToDTO(price);
+                        }).orElseThrow(()-> new ResourceNotFoundException("Price request dont must be empty"));
     }
 
     @Override
     public DTOPrice getPriceById(Long id) {
-        Price price = priceRepository.findById(id).orElse(null);
-        DTOPrice dtoPrice = priceMapper.priceToDTO(price);
-        return dtoPrice;
+        return priceRepository.findById(id)
+                .map(priceMapper::priceToDTO)
+                .orElseThrow(()-> new ResourceNotFoundException("Price not found for id : " + id));
     }
 
 }

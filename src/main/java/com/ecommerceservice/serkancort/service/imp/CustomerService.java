@@ -1,10 +1,7 @@
 package com.ecommerceservice.serkancort.service.imp;
 
-import com.ecommerceservice.serkancort.dto.inward.DTOAddressIU;
-import com.ecommerceservice.serkancort.dto.inward.DTOCartIU;
+
 import com.ecommerceservice.serkancort.dto.mapper.CustomerMapper;
-import com.ecommerceservice.serkancort.dto.outward.DTOAddress;
-import com.ecommerceservice.serkancort.dto.outward.DTOCart;
 import com.ecommerceservice.serkancort.dto.outward.DTOCustomer;
 import com.ecommerceservice.serkancort.dto.inward.DTOCustomerIU;
 import com.ecommerceservice.serkancort.exceptions.ResourceNotFoundException;
@@ -19,64 +16,71 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class CustomerService implements ICustomerService {
-
-    private final AddressService addressService;
-    private final CartService cartService;
     private final CustomerRepository customerRepository;
     private final CustomerMapper customerMapper;
 
     @Override
     @Transactional
     public DTOCustomer createCustomer(DTOCustomerIU request) {
-        request.setId(null);
-        Customer customer = customerMapper.customerToENTITY(request);
-        Cart cart = new Cart();
-        cart.setProducts(new ArrayList<>());
-        cart.setTotalPrice(BigDecimal.ZERO);
-        cart.setCustomer(customer);
-        customer.setCart(cart);
-
-        Customer response = customerRepository.save(customer);
-        DTOCustomer dtoCustomer = customerMapper.customerToDTO(response);
-        return dtoCustomer;
+        return Optional.ofNullable(request)
+                    .map(c ->{
+                        Customer customer = customerMapper.customerToENTITY(c);
+                        customer.setId(null);
+                        Cart cart = createEmptyCart();
+                        cart.setCustomer(customer);
+                        customer.setCart(cart);
+                        Customer response = customerRepository.save(customer);
+                        return customerMapper.customerToDTO(response);
+                    })
+                    .orElseThrow(()-> new ResourceNotFoundException("Requested Customer dont must be empty !"));
     }
 
     @Override
     @Transactional
     public List<DTOCustomer> getAllCustomers() {
-
         List<Customer> customers = customerRepository.findAll();
-        List<DTOCustomer> dtoCustomers = customerMapper.customerToDTOList(customers);
-        return dtoCustomers;
+        return customerMapper.customerToDTOList(customers);
     }
 
     @Override
     @Transactional
     public DTOCustomer getCustomerById(Long id) {
-
-        Customer customer = customerRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Customer not found with id: " + id));
-        DTOCustomer dtoCustomer = customerMapper.customerToDTO(customer);
-        return dtoCustomer;
+        return customerRepository.findById(id)
+                .map(customerMapper::customerToDTO)
+                .orElseThrow(()-> new ResourceNotFoundException("Customer not found with id: " + id));
     }
 
     @Override
+    @Transactional
     public DTOCustomer updateCustomer(Long id , DTOCustomerIU request) {
-
-        Customer customer = customerRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Customer not found with id: " + id));
-        customerMapper.updateCustomerFromDTO(request, customer);
-        Customer response = customerRepository.save(customer);
-        DTOCustomer dtoCustomer = customerMapper.customerToDTO(response);
-        return dtoCustomer;
+        return customerRepository.findById(id)
+                .map(customer -> {
+                    customerMapper.updateCustomerFromDTO(request, customer);
+                    Customer response = customerRepository.save(customer);
+                    return customerMapper.customerToDTO(response);
+                })
+                .orElseThrow(()-> new ResourceNotFoundException("Customer not found with id: " + id));
     }
 
     @Override
     public void deleteCustomer(Long id) {
+        customerRepository.findById(id).ifPresentOrElse(
+                customerRepository::delete,
+                ()-> {
+                    throw new ResourceNotFoundException("Customer not found with id: " + id);
+                }
+        );
+    }
 
-        Customer customer = customerRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Customer not found with id: " + id));
-        customerRepository.delete(customer);
+    private Cart createEmptyCart() {
+        Cart cart = new Cart();
+        cart.setTotalPrice(BigDecimal.ZERO);
+        cart.setProducts(new ArrayList<>());
+        return cart;
     }
 }

@@ -4,8 +4,11 @@ import com.ecommerceservice.serkancort.dto.inward.DTOCustomerIU;
 import com.ecommerceservice.serkancort.dto.inward.DTOOrderIU;
 import com.ecommerceservice.serkancort.dto.outward.DTOOrder;
 import com.ecommerceservice.serkancort.service.imp.OrderService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,7 +16,8 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("rest/api/order")
+@Validated
+@RequestMapping("/api/order")
 public class RestOrderController {
     private final OrderService orderService;
 
@@ -24,7 +28,7 @@ public class RestOrderController {
     }
 
     @GetMapping("/{customerId}/byCustomer")
-    public ResponseEntity<List<DTOOrder>> getOrderByCustomerId(@PathVariable(name = "customerId") Long customerId) {
+    public ResponseEntity<List<DTOOrder>> getOrderByCustomerId(@PathVariable(name = "customerId") @Min(value = 1 , message = "Geçerli bir ID giriniz!") Long customerId) {
         List<DTOOrder> orders = orderService.getOrderByCustomerId(customerId);
         return ResponseEntity.ok(orders);
     }
@@ -36,19 +40,19 @@ public class RestOrderController {
     }
 
     @PostMapping("/customers/{customerId}/order")
-    public ResponseEntity<DTOOrder> orderPlace( @PathVariable Long customerId,@RequestBody DTOOrderIU order) {
+    public ResponseEntity<DTOOrder> orderPlace( @PathVariable @Min(value = 1 , message = "Geçerli bir ID giriniz!") Long customerId, @Valid @RequestBody DTOOrderIU order) {
         DTOOrder dtoOrder = orderService.orderPlace(customerId , order);
         return ResponseEntity.ok(dtoOrder);
     }
 
     @PutMapping("/{orderId}/address")
-    public ResponseEntity<DTOOrder> updateOrderAddress(@PathVariable Long orderId ,@RequestBody DTOOrderIU request){
+    public ResponseEntity<DTOOrder> updateOrderAddress(@PathVariable @Min(value = 1 , message = "Geçerli bir ID giriniz!") Long orderId , @Valid @RequestBody DTOOrderIU request){
         DTOOrder dtoOrder = orderService.updateOrderAddress(orderId , request);
         return ResponseEntity.ok(dtoOrder);
     }
 
     @PutMapping("/{orderId}/status")
-    public ResponseEntity<DTOOrder> updateOrderStatus(@PathVariable Long orderId ,@RequestBody DTOOrderIU request){
+    public ResponseEntity<DTOOrder> updateOrderStatus(@PathVariable @Min(value = 1 , message = "Geçerli bir ID giriniz!") Long orderId , @Valid @RequestBody DTOOrderIU request){
         DTOOrder dtoOrder = orderService.updateOrderStatus(orderId , request);
         return ResponseEntity.ok(dtoOrder);
     }

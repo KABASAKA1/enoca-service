@@ -27,10 +27,5 @@ public class ProductStok extends BaseEntity {
     @OneToMany(mappedBy = "productStok" , cascade = CascadeType.ALL, fetch = FetchType.EAGER ,orphanRemoval = true)
     private List<Price> priceHistory = new ArrayList<>();
 
-    @PreUpdate
-    public void updateInStockStatus() {
-        product.setIsAvailable(stokAdet != null && stokAdet.compareTo(BigDecimal.ZERO) > 0);
-    }
-
 }
 

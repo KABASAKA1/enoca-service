@@ -18,7 +18,6 @@ import java.util.List;
 @AllArgsConstructor
 public class Customer extends BaseEntity {
 
-    @Column()
     private String name;
 
     @Column( name = "phone_number", unique = true)

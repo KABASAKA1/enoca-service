@@ -7,9 +7,7 @@ import com.ecommerceservice.serkancort.exceptions.ResourceNotFoundException;
 import com.ecommerceservice.serkancort.model.Price;
 import com.ecommerceservice.serkancort.model.Product;
 import com.ecommerceservice.serkancort.model.ProductStok;
-import com.ecommerceservice.serkancort.repository.PriceRepository;
 import com.ecommerceservice.serkancort.repository.ProductRepository;
-import com.ecommerceservice.serkancort.repository.ProductStokRepository;
 import com.ecommerceservice.serkancort.service.IProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,61 +24,73 @@ public class ProductService implements IProductService {
 
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
-    private final PriceRepository priceRepository;
-    private final ProductStokRepository productStokRepository;
 
     @Transactional
     @Override
     public DTOProduct createPruduct(DTOProductIU request) {
-        request.setId(null);
-        Product product = new Product();
-        product.setName(request.getName());
+        return Optional.ofNullable(request)
+                        .map(p ->{
+                            Product product = new Product();
+                            product.setName(p.getName());
 
-        Price price = new Price();
-        price.setPrice(request.getPrice());
+                            Price price = new Price();
+                            price.setPrice(p.getPrice());
 
-        ProductStok productStok = new ProductStok();
-        productStok.setProduct(product);
-        productStok.setStokAdet(request.getStokAdet());
-        List<Price> priceHistory = new ArrayList<>();
-        priceHistory.add(price);
-        productStok.setPriceHistory(priceHistory);
-        boolean isAvailable = request.getStokAdet()!=null && request.getStokAdet().compareTo(BigDecimal.ZERO)>0;
+                            ProductStok productStok = new ProductStok();
+                            productStok.setProduct(product);
+                            productStok.setStokAdet(p.getStokAdet());
 
-        price.setProductStok(productStok);
-        product.setPrice(price);
-        product.setProductStok(productStok);
-        product.setIsAvailable(isAvailable);
+                            List<Price> priceHistory = new ArrayList<>();
+                            priceHistory.add(price);
+                            productStok.setPriceHistory(priceHistory);
+                            boolean isAvailable = p.getStokAdet()!=null && p.getStokAdet().compareTo(BigDecimal.ZERO)>0;
 
-        Product response = productRepository.save(product);
-        return productMapper.productToDTO(response);
+                            price.setProductStok(productStok);
+                            product.setPrice(price);
+                            product.setProductStok(productStok);
+                            product.setIsAvailable(isAvailable);
+
+                            product = updateInStockStatus(product);
+                            Product response = productRepository.save(product);
+                            return productMapper.productToDTO(response);
+                        })
+                        .orElseThrow(()-> new ResourceNotFoundException("Product request dont must be empty"));
     }
 
     @Transactional
+    @Override
     public DTOProduct updateProductPrice(Long id, DTOProductIU request) {
-        Product product = productRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Product not found with id: " + id));
-        ProductStok productStok = product.getProductStok();
-        Price price = new Price();
-
-        price.setPrice(request.getPrice());
-        price.setProductStok(productStok);
-        productStok.getPriceHistory().add(price);
-        product.setPrice(price);
-        product.setProductStok(productStok);
-
-        Product response = productRepository.save(product);
-        return productMapper.productToDTO(response);
+        if (request.getPrice() == null) {
+            throw new ResourceNotFoundException("Product price request dont must be empty");
+        }
+        return productRepository.findById(id)
+                .map(product -> {
+                    ProductStok productStok = product.getProductStok();
+                    Price price = createPrice(productStok, request.getPrice());
+                    productStok.getPriceHistory().add(price);
+                    product.setPrice(price);
+                    product = updateInStockStatus(product);
+                    Product response = productRepository.save(product);
+                    return productMapper.productToDTO(response);
+                })
+                .orElseThrow(()-> new ResourceNotFoundException("Product  not found with id:: "+id));
     }
     @Transactional
+    @Override
     public DTOProduct updateProductStock(Long id , DTOProductIU request) {
-        Product product = productRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Product not found with id: " + id));
-        ProductStok productStok = product.getProductStok();
-
-        productStok.setStokAdet(request.getStokAdet());
-        product.setProductStok(productStok);
-
-        Product response = productRepository.save(product);
-        return productMapper.productToDTO(response);
+        if (request.getStokAdet() == null) {
+            throw new ResourceNotFoundException("Product stok request dont must be empty");
+        }
+        return productRepository.findById(id)
+                .map(product -> {
+                    ProductStok productStok = product.getProductStok();
+                    productStok.setStokAdet(request.getStokAdet());
+                    product.setProductStok(productStok);
+                    product = updateInStockStatus(product);
+                    Product response = productRepository.save(product);
+                    return productMapper.productToDTO(response);
+                })
+                .orElseThrow(()-> new ResourceNotFoundException("Product not found with id :: "+id));
     }
 
 
@@ -88,24 +99,51 @@ public class ProductService implements IProductService {
     public List<DTOProduct> getAllPruducts() {
 
         List<Product> products = productRepository.findAll();
-        List<DTOProduct> dtoProducts = productMapper.productToDTOList(products);
-        return dtoProducts;
+        products.forEach(this::updateInStockStatus);
+        List<Product> response = productRepository.saveAll(products);
+        return productMapper.productToDTOList(response);
     }
 
     @Transactional
     @Override
     public DTOProduct getProductById(Long id) {
-
-        Product product = productRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException( "Product not found with id: " + id));
-        DTOProduct dtoProduct = productMapper.productToDTO(product);
-        return dtoProduct;
+        return productRepository.findById(id)
+                .map(product -> {
+                    product = productRepository.save(updateInStockStatus(product));
+                    return productMapper.productToDTO(product);
+                })
+                .orElseThrow(()-> new ResourceNotFoundException("Product not found with id:: "+id));
     }
 
 
     @Transactional
     @Override
     public void deleteProduct(Long id) {
-        Product product = productRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException( "Product not found with id: " + id));
-        productRepository.delete(product);
+        productRepository.findById(id)
+                .ifPresentOrElse(
+                        productRepository::delete,
+                        ()-> {throw  new ResourceNotFoundException("Product not found with id:: "+id);}
+                );
     }
+
+
+    private Price createPrice(ProductStok productStok , BigDecimal price) {
+        Price priceEntity = new Price();
+        priceEntity.setPrice(price);
+        priceEntity.setProductStok(productStok);
+        return priceEntity;
+    }
+
+    protected Product updateInStockStatus(Product product) {
+        product.setIsAvailable(calculateInStockStatus(product));
+        return product;
+    }
+    private Boolean calculateInStockStatus(Product product) {
+        return Optional.ofNullable(product)
+                .map(Product::getProductStok)
+                .map(ProductStok::getStokAdet)
+                .map(stock -> stock.compareTo(BigDecimal.ZERO) > 0)
+                .orElse(false);
+    }
+
 }

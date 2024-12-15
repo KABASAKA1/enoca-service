@@ -14,5 +14,5 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     Optional<Cart> findCartByCustomerId(Long customerId);
 
     @Query("Select c  From Cart c Join c.products d join d.product product where product.name Like %:keyword% ")
-    List<Cart> findAllCartByProductNameContainingKeyword(@Param("keyword") String keyword);
+    Optional<List<Cart>> findAllCartByProductNameContainingKeyword(@Param("keyword") String keyword);
 }

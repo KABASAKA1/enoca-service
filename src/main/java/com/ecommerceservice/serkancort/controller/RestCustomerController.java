@@ -4,16 +4,20 @@ package com.ecommerceservice.serkancort.controller;
 import com.ecommerceservice.serkancort.dto.inward.DTOCustomerIU;
 import com.ecommerceservice.serkancort.dto.outward.DTOCustomer;
 import com.ecommerceservice.serkancort.service.imp.CustomerService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("rest/api/customer")
+@Validated
+@RequestMapping("/api/customer")
 public class RestCustomerController {
     private final CustomerService customerService;
 
@@ -25,24 +29,24 @@ public class RestCustomerController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DTOCustomer> getCustomerById(@PathVariable Long id){
+    public ResponseEntity<DTOCustomer> getCustomerById(@PathVariable @Min(value = 1 , message = "Geçerli bir ID giriniz!") Long id){
         DTOCustomer customer = customerService.getCustomerById(id);
         return ResponseEntity.ok(customer);
     }
 
     @PostMapping
-    public ResponseEntity<DTOCustomer> createCustomer(@RequestBody DTOCustomerIU request){
+    public ResponseEntity<DTOCustomer> createCustomer(@Valid @RequestBody DTOCustomerIU request){
         DTOCustomer customer = customerService.createCustomer(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(customer);
     }
     @PutMapping("/{id}")
-    public ResponseEntity<DTOCustomer> updateCustomer(@PathVariable Long id, @RequestBody DTOCustomerIU request){
+    public ResponseEntity<DTOCustomer> updateCustomer(@PathVariable @Min(value = 1 , message = "Geçerli bir ID giriniz!") Long id, @Valid @RequestBody DTOCustomerIU request){
         DTOCustomer customer = customerService.updateCustomer(id, request);
         return ResponseEntity.ok(customer);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCustomer(@PathVariable Long id){
+    public ResponseEntity<Void> deleteCustomer(@PathVariable @Min(value = 1 , message = "Geçerli bir ID giriniz!") Long id){
         customerService.deleteCustomer(id);
         return ResponseEntity.noContent().build();
     }
